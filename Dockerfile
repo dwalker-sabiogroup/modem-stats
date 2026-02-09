@@ -1,24 +1,12 @@
-FROM telegraf:1.16.2 as builder
+FROM golang:1.25-alpine AS builder
 
-ARG OBJECT_SUFFIX=''
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o modem-stats .
 
-ADD . /test
-RUN ls -lah test/
-
-ADD "output/modem-stats${OBJECT_SUFFIX}.x86" /modem-stats
-RUN chmod +x /modem-stats
-
-ADD ./docker/entrypoint-msh.sh /entrypoint-msh.sh
-RUN chmod +x /entrypoint-msh.sh
-
-RUN mkdir -p /etc/telegraf.d/ /etc/template/
-ADD ./docker/telegraf.conf /etc/template/
-
-# We build from scratch as to remove all the volume and exposures from the
-# source Telegraf Docker image. Since we don't have any state or listeners,
-# this is "okay" to do.
 FROM scratch
-
-COPY --from=builder / /
-
-ENTRYPOINT /entrypoint-msh.sh
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /app/modem-stats /modem-stats
+ENTRYPOINT ["/modem-stats"]
