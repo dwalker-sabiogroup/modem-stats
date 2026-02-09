@@ -10,6 +10,13 @@ import (
 	"github.com/msh100/modem-stats/utils"
 )
 
+var (
+	downChannelRegex  = regexp.MustCompile(`"1\.3\.6\.1\.2\.1\.10\.127\.1\.1\.1\.1\.1\.([0-9]+)"`)
+	upChannelRegex    = regexp.MustCompile(`"1\.3\.6\.1\.2\.1\.10\.127\.1\.1\.2\.1\.1\.([0-9]+)"`)
+	activeConfigRegex = regexp.MustCompile(`"1\.3\.6\.1\.4\.1\.4491\.2\.1\.21\.1\.3\.1\.8\.2\.[0-9]+\.([0-9]+)":"1"`)
+	configRegex       = regexp.MustCompile(`"1\.3\.6\.1\.4\.1\.4491\.2\.1\.21\.1\.3\.1\.7\.2\.[0-9]+\.([0-9]+)":"([1-2])"`)
+)
+
 type Modem struct {
 	IPAddress string
 	Stats     []byte
@@ -32,9 +39,6 @@ func (sh3 *Modem) fetchURL() string {
 }
 
 func (sh3 *Modem) activeChannels() ([]int, []int) {
-	downChannelRegex := regexp.MustCompile("\"1.3.6.1.2.1.10.127.1.1.1.1.1.([0-9]+)\"")
-	upChannelRegex := regexp.MustCompile("\"1.3.6.1.2.1.10.127.1.1.2.1.1.([0-9]+)\"")
-
 	downChannels := []int{}
 	upChannels := []int{}
 
@@ -51,9 +55,6 @@ func (sh3 *Modem) activeChannels() ([]int, []int) {
 }
 
 func (sh3 *Modem) activeConfigs() (int, int) {
-	activeConfigRegex := regexp.MustCompile("\"1.3.6.1.4.1.4491.2.1.21.1.3.1.8.2.[0-9]+.([0-9]+)\":\"1\"")
-	configRegex := regexp.MustCompile("\"1.3.6.1.4.1.4491.2.1.21.1.3.1.7.2.[0-9]+.([0-9]+)\":\"([1-2])\"")
-
 	downConfig := 0
 	upConfig := 0
 
@@ -102,10 +103,12 @@ func (sh3 *Modem) readMIBInt(json map[string]interface{}, mib string, channel in
 	return outputInt
 }
 
-func (sh3 *Modem) dataAsJSON() map[string]interface{} {
+func (sh3 *Modem) dataAsJSON() (map[string]interface{}, error) {
 	var snmpData map[string]interface{}
-	json.Unmarshal(sh3.Stats, &snmpData)
-	return snmpData
+	if err := json.Unmarshal(sh3.Stats, &snmpData); err != nil {
+		return nil, fmt.Errorf("failed to parse stats JSON: %w", err)
+	}
+	return snmpData, nil
 }
 
 func (sh3 *Modem) ParseStats() (utils.ModemStats, error) {
@@ -120,7 +123,10 @@ func (sh3 *Modem) ParseStats() (utils.ModemStats, error) {
 	downChannelIDs, upChannelIDs := sh3.activeChannels()
 	downConfigID, upConfigID := sh3.activeConfigs()
 
-	snmpData := sh3.dataAsJSON()
+	snmpData, err := sh3.dataAsJSON()
+	if err != nil {
+		return utils.ModemStats{}, err
+	}
 
 	var downChannels []utils.ModemChannel
 	var upChannels []utils.ModemChannel

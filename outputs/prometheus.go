@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"strconv"
 
 	"github.com/msh100/modem-stats/utils"
@@ -17,8 +18,15 @@ type PrometheusExporter struct {
 	downSNR         *prometheus.Desc
 	downPreRS       *prometheus.Desc
 	downPostRS      *prometheus.Desc
+	downLocked      *prometheus.Desc
 	upFrequency     *prometheus.Desc
 	upPower         *prometheus.Desc
+	upLocked        *prometheus.Desc
+	upSymbolRate    *prometheus.Desc
+	upT1Timeout     *prometheus.Desc
+	upT2Timeout     *prometheus.Desc
+	upT3Timeout     *prometheus.Desc
+	upT4Timeout     *prometheus.Desc
 	maxrate         *prometheus.Desc
 	maxburst        *prometheus.Desc
 	fetchtime       *prometheus.Desc
@@ -92,6 +100,16 @@ func (p *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 				float64(c.Postrserr),
 				labels...,
 			)
+			lockedVal := 0.0
+			if c.Locked {
+				lockedVal = 1.0
+			}
+			ch <- prometheus.MustNewConstMetric(
+				p.downLocked,
+				prometheus.GaugeValue,
+				lockedVal,
+				labels...,
+			)
 		}
 	}
 
@@ -133,6 +151,48 @@ func (p *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 				float64(c.Frequency),
 				labels...,
 			)
+			lockedVal := 0.0
+			if c.Locked {
+				lockedVal = 1.0
+			}
+			ch <- prometheus.MustNewConstMetric(
+				p.upLocked,
+				prometheus.GaugeValue,
+				lockedVal,
+				labels...,
+			)
+			if c.SymbolRate > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					p.upSymbolRate,
+					prometheus.GaugeValue,
+					float64(c.SymbolRate),
+					labels...,
+				)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				p.upT1Timeout,
+				prometheus.CounterValue,
+				float64(c.T1Timeout),
+				labels...,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				p.upT2Timeout,
+				prometheus.CounterValue,
+				float64(c.T2Timeout),
+				labels...,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				p.upT3Timeout,
+				prometheus.CounterValue,
+				float64(c.T3Timeout),
+				labels...,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				p.upT4Timeout,
+				prometheus.CounterValue,
+				float64(c.T4Timeout),
+				labels...,
+			)
 		}
 	}
 
@@ -171,6 +231,13 @@ func (p *PrometheusExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.downSNR
 	ch <- p.downPostRS
 	ch <- p.downPreRS
+	ch <- p.downLocked
+	ch <- p.upLocked
+	ch <- p.upSymbolRate
+	ch <- p.upT1Timeout
+	ch <- p.upT2Timeout
+	ch <- p.upT3Timeout
+	ch <- p.upT4Timeout
 	ch <- p.maxrate
 	ch <- p.maxburst
 	ch <- p.fetchtime
@@ -225,6 +292,12 @@ func ProExporter(docsisModem utils.DocsisModem) *PrometheusExporter {
 			downLabels,
 			nil,
 		),
+		downLocked: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "downstream", "locked"),
+			"Downstream channel lock status (1=locked, 0=unlocked)",
+			downLabels,
+			nil,
+		),
 		downAttenuation: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "downstream", "attenuation"),
 			"Downstream attenuation in TODO: wtf is this?",
@@ -246,6 +319,42 @@ func ProExporter(docsisModem utils.DocsisModem) *PrometheusExporter {
 		upPower: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "upstream", "power"),
 			"Upstream Power level in dBmv",
+			upLabels,
+			nil,
+		),
+		upLocked: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "upstream", "locked"),
+			"Upstream channel lock status (1=locked, 0=unlocked)",
+			upLabels,
+			nil,
+		),
+		upSymbolRate: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "upstream", "symbol_rate"),
+			"Upstream symbol rate in ksym/s",
+			upLabels,
+			nil,
+		),
+		upT1Timeout: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "upstream", "t1_timeout_total"),
+			"Upstream T1 timeout count",
+			upLabels,
+			nil,
+		),
+		upT2Timeout: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "upstream", "t2_timeout_total"),
+			"Upstream T2 timeout count",
+			upLabels,
+			nil,
+		),
+		upT3Timeout: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "upstream", "t3_timeout_total"),
+			"Upstream T3 timeout count",
+			upLabels,
+			nil,
+		),
+		upT4Timeout: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "upstream", "t4_timeout_total"),
+			"Upstream T4 timeout count",
 			upLabels,
 			nil,
 		),

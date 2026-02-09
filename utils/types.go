@@ -13,6 +13,16 @@ type ModemChannel struct {
 
 	Noise       int
 	Attenuation int
+
+	// DOCSIS timeout counters (upstream only)
+	T1Timeout int
+	T2Timeout int
+	T3Timeout int
+	T4Timeout int
+
+	// Additional channel info
+	Locked     bool
+	SymbolRate int
 }
 
 type ModemConfig struct {

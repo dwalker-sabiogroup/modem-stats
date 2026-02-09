@@ -3,7 +3,7 @@ package superhub5
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"regexp"
 	"time"
 
@@ -42,6 +42,7 @@ type dsChannel struct {
 	PostRS      int     `json:"uncorrectedErrors"`
 	ChannelType string  `json:"channelType"`
 	RxMer       int     `json:"rxMer"`
+	LockStatus  bool    `json:"lockStatus"`
 }
 
 type usChannel struct {
@@ -50,6 +51,12 @@ type usChannel struct {
 	Power       float32 `json:"power"`
 	Modulation  string  `json:"modulation"`
 	ChannelType string  `json:"channelType"`
+	LockStatus  bool    `json:"lockStatus"`
+	SymbolRate  int     `json:"symbolRate"`
+	T1Timeout   int     `json:"t1Timeout"`
+	T2Timeout   int     `json:"t2Timeout"`
+	T3Timeout   int     `json:"t3Timeout"`
+	T4Timeout   int     `json:"t4Timeout"`
 }
 
 type serviceFlow struct {
@@ -71,6 +78,8 @@ type resultsStruct struct {
 	ServiceFlows []serviceFlow `json:"serviceFlows"`
 }
 
+var modulationRegex = regexp.MustCompile("[0-9]+")
+
 func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 	if sh5.Stats == nil {
 		sh5.Stats = []byte("{}")
@@ -80,12 +89,16 @@ func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 			sh5.apiAddress() + "/serviceflows",
 		}
 
-		timeStart := time.Now().UnixNano() / int64(time.Millisecond)
+		timeStart := time.Now().UnixMilli()
 		statsData := utils.BoundedParallelGet(queries, 3)
-		sh5.FetchTime = (time.Now().UnixNano() / int64(time.Millisecond)) - timeStart
+		sh5.FetchTime = time.Now().UnixMilli() - timeStart
 
 		for _, query := range statsData {
-			stats, err := ioutil.ReadAll(query.Res.Body)
+			if query.Err != nil {
+				return utils.ModemStats{}, query.Err
+			}
+			stats, err := io.ReadAll(query.Res.Body)
+			query.Res.Body.Close()
 			if err != nil {
 				return utils.ModemStats{}, err
 			}
@@ -102,11 +115,12 @@ func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 	var modemConfigs []utils.ModemConfig
 
 	var results resultsStruct
-	json.Unmarshal(sh5.Stats, &results)
+	if err := json.Unmarshal(sh5.Stats, &results); err != nil {
+		return utils.ModemStats{}, fmt.Errorf("failed to parse stats JSON: %w", err)
+	}
 
 	for index, downstream := range results.Downstream.Channels {
-		re := regexp.MustCompile("[0-9]+")
-		qamSize := re.FindString(downstream.Modulation)
+		qamSize := modulationRegex.FindString(downstream.Modulation)
 
 		powerInt := int(downstream.Power * 10)
 		snr := downstream.SNR * 10
@@ -133,6 +147,7 @@ func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 			Postrserr:  downstream.PostRS,
 			Modulation: "QAM" + qamSize,
 			Scheme:     scheme,
+			Locked:     downstream.LockStatus,
 		})
 	}
 
@@ -151,11 +166,17 @@ func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 		}
 
 		upChannels = append(upChannels, utils.ModemChannel{
-			ChannelID: upstream.ID,
-			Channel:   index + 1,
-			Frequency: upstream.Frequency,
-			Power:     powerInt,
-			Scheme:    scheme,
+			ChannelID:  upstream.ID,
+			Channel:    index + 1,
+			Frequency:  upstream.Frequency,
+			Power:      powerInt,
+			Scheme:     scheme,
+			Locked:     upstream.LockStatus,
+			SymbolRate: upstream.SymbolRate,
+			T1Timeout:  upstream.T1Timeout,
+			T2Timeout:  upstream.T2Timeout,
+			T3Timeout:  upstream.T3Timeout,
+			T4Timeout:  upstream.T4Timeout,
 		})
 	}
 

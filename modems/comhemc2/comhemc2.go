@@ -3,7 +3,7 @@ package comhemc2
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -118,7 +118,7 @@ func (sagemClient *sagemClient) apiRequest(actions string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	returnValue, _ := gabs.ParseJSON(body)
 	returnID := utils.GabsString(returnValue, "reply.actions.0.callbacks.0.parameters.id")
@@ -168,7 +168,7 @@ func (comhemc2 *Modem) Type() string {
 
 func (comhemc2 *Modem) ParseStats() (utils.ModemStats, error) {
 	if comhemc2.Stats == nil {
-		timeStart := time.Now().UnixNano() / int64(time.Millisecond)
+		timeStart := time.Now().UnixMilli()
 
 		if comhemc2.sagemClient == nil {
 			if comhemc2.Username == "" {
@@ -198,9 +198,7 @@ func (comhemc2 *Modem) ParseStats() (utils.ModemStats, error) {
 			return utils.ModemStats{}, err
 		}
 
-		fetchTime := (time.Now().UnixNano() / int64(time.Millisecond)) - timeStart
-
-		comhemc2.FetchTime = fetchTime
+		comhemc2.FetchTime = time.Now().UnixMilli() - timeStart
 		comhemc2.Stats = channelDataReq
 	}
 

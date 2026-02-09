@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -39,10 +39,11 @@ func main() {
 	var body []byte
 	var fetchTime int64
 	if localFile := utils.Getenv("LOCAL_FILE", ""); localFile != "" {
-		timeStart := time.Now().UnixNano() / int64(time.Millisecond)
+		timeStart := time.Now().UnixMilli()
 		file, _ := os.Open(localFile)
-		body, _ = ioutil.ReadAll(file)
-		fetchTime = (time.Now().UnixNano() / int64(time.Millisecond)) - timeStart
+		body, _ = io.ReadAll(file)
+		file.Close()
+		fetchTime = time.Now().UnixMilli() - timeStart
 	}
 
 	var routerType string

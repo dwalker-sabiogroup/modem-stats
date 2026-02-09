@@ -3,7 +3,7 @@ package tc4400
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -43,7 +43,7 @@ func (tc4400 *Modem) getStats() ([]byte, error) {
 		}
 		req.SetBasicAuth(tc4400.Username, tc4400.Password)
 
-		timeStart := time.Now().UnixNano() / int64(time.Millisecond)
+		timeStart := time.Now().UnixMilli()
 
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -53,12 +53,12 @@ func (tc4400 *Modem) getStats() ([]byte, error) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
-			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return nil, err
 			}
 			tc4400.Stats = bodyBytes
-			tc4400.FetchTime = (time.Now().UnixNano() / int64(time.Millisecond)) - timeStart
+			tc4400.FetchTime = time.Now().UnixMilli() - timeStart
 		} else {
 			return nil, fmt.Errorf("Request failed with status: %s", resp.Status)
 		}

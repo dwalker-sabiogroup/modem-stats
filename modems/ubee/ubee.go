@@ -8,6 +8,8 @@ import (
 	"github.com/msh100/modem-stats/utils"
 )
 
+var cmConnJSONRegex = regexp.MustCompile(`var cm_conn_json = '([^']+)';`)
+
 type Modem struct {
 	IPAddress string
 	Stats     []byte
@@ -56,14 +58,18 @@ type resultsStruct struct {
 	UpstreamChannels   []usChannel `json:"cm_conn_us_gourpObj"`
 }
 
-func (ubee *Modem) extractStats() resultsStruct {
-	var re = regexp.MustCompile(`var cm_conn_json = '([^']+)';`)
-	match := re.FindAllStringSubmatch(string(ubee.Stats), 1)
+func (ubee *Modem) extractStats() (resultsStruct, error) {
+	match := cmConnJSONRegex.FindAllStringSubmatch(string(ubee.Stats), 1)
+	if len(match) == 0 || len(match[0]) < 2 {
+		return resultsStruct{}, fmt.Errorf("failed to extract JSON from response")
+	}
 
 	var results resultsStruct
-	json.Unmarshal([]byte(match[0][1]), &results)
+	if err := json.Unmarshal([]byte(match[0][1]), &results); err != nil {
+		return resultsStruct{}, fmt.Errorf("failed to parse JSON: %w", err)
+	}
 
-	return results
+	return results, nil
 }
 
 func (ubee *Modem) ParseStats() (utils.ModemStats, error) {
@@ -75,7 +81,10 @@ func (ubee *Modem) ParseStats() (utils.ModemStats, error) {
 		}
 	}
 
-	results := ubee.extractStats()
+	results, err := ubee.extractStats()
+	if err != nil {
+		return utils.ModemStats{}, err
+	}
 	var downChannels []utils.ModemChannel
 	var upChannels []utils.ModemChannel
 

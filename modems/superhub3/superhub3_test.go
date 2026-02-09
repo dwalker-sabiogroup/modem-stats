@@ -2,7 +2,7 @@ package superhub3
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"testing"
 
@@ -73,7 +73,7 @@ func Test_activeChannels(t *testing.T) {
 	}
 
 	for _, testData := range testTable {
-		dat, err := ioutil.ReadFile(fmt.Sprintf("test_state/%s", testData.input))
+		dat, err := os.ReadFile(fmt.Sprintf("test_state/%s", testData.input))
 		check(err)
 		fmt.Println(testData.input)
 		modem := Modem{
@@ -137,7 +137,7 @@ func Test_activeProfile(t *testing.T) {
 	}
 
 	for _, testData := range testTable {
-		dat, err := ioutil.ReadFile(fmt.Sprintf("test_state/%s", testData.input))
+		dat, err := os.ReadFile(fmt.Sprintf("test_state/%s", testData.input))
 		check(err)
 		modem := Modem{
 			Stats: dat,
@@ -194,12 +194,13 @@ func Test_readMIBInt(t *testing.T) {
 	}
 
 	for _, testData := range testTable {
-		dat, err := ioutil.ReadFile(fmt.Sprintf("test_state/%s", testData.input))
+		dat, err := os.ReadFile(fmt.Sprintf("test_state/%s", testData.input))
 		check(err)
 		modem := Modem{
 			Stats: dat,
 		}
-		dataJSON := modem.dataAsJSON()
+		dataJSON, err := modem.dataAsJSON()
+		check(err)
 
 		for _, testCase := range testData.tests {
 			MibValue := modem.readMIBInt(dataJSON, testCase.mib, testCase.finalInt)
@@ -223,12 +224,13 @@ func Test_dataAsJSON(t *testing.T) {
 	re := regexp.MustCompile(mibRegex)
 
 	for _, testData := range testTable {
-		dat, err := ioutil.ReadFile(fmt.Sprintf("test_state/%s", testData))
+		dat, err := os.ReadFile(fmt.Sprintf("test_state/%s", testData))
 		check(err)
 		modem := Modem{
 			Stats: dat,
 		}
-		dataJSON := modem.dataAsJSON()
+		dataJSON, err := modem.dataAsJSON()
+		check(err)
 
 		for key := range dataJSON {
 			assert.True(t, re.Match([]byte(key)))
@@ -248,7 +250,7 @@ func Test_ParseStats(t *testing.T) {
 	}
 
 	for _, testData := range testTable {
-		dat, err := ioutil.ReadFile(fmt.Sprintf("test_state/%s", testData))
+		dat, err := os.ReadFile(fmt.Sprintf("test_state/%s", testData))
 		check(err)
 		modem := Modem{
 			Stats: dat,

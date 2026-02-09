@@ -4,8 +4,8 @@ import (
 	"crypto/md5"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
-	"math/rand"
+	"io"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,33 +16,33 @@ import (
 )
 
 var insecureHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
 	Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	},
 }
 
 func SimpleHTTPFetch(url string) ([]byte, int64, error) {
-	timeStart := time.Now().UnixNano() / int64(time.Millisecond)
+	timeStart := time.Now().UnixMilli()
 	resp, err := insecureHTTPClient.Get(url)
 	if err != nil {
 		return nil, 0, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		return nil, 0, fmt.Errorf("%d status code recieved", resp.StatusCode)
 	}
 
-	stats, err := ioutil.ReadAll(resp.Body)
+	stats, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, 0, err
 	}
-	fetchTime := (time.Now().UnixNano() / int64(time.Millisecond)) - timeStart
+	fetchTime := time.Now().UnixMilli() - timeStart
 	return stats, fetchTime, nil
 }
 
 func RandomInt(min int, max int) int {
-	rand.Seed(time.Now().UnixNano())
-	random := rand.Intn(max-min) + min
-	return random
+	return rand.IntN(max-min) + min
 }
 
 func StringToMD5(input string) string {
@@ -89,12 +89,7 @@ type HttpResult struct {
 
 func BoundedParallelGet(urls []string, concurrencyLimit int) []HttpResult {
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
-	resultsChan := make(chan *HttpResult)
-
-	defer func() {
-		close(semaphoreChan)
-		close(resultsChan)
-	}()
+	resultsChan := make(chan *HttpResult, len(urls))
 
 	for i, url := range urls {
 		go func(i int, url string) {
@@ -111,14 +106,13 @@ func BoundedParallelGet(urls []string, concurrencyLimit int) []HttpResult {
 		}(i, url)
 	}
 
-	var results []HttpResult
-	for {
+	results := make([]HttpResult, 0, len(urls))
+	for range urls {
 		result := <-resultsChan
 		results = append(results, *result)
-		if len(results) == len(urls) {
-			break
-		}
 	}
+	close(semaphoreChan)
+	close(resultsChan)
 
 	return results
 }
