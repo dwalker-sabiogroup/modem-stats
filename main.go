@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	flags "github.com/jessevdk/go-flags"
@@ -99,8 +100,15 @@ func main() {
 		log.Fatalf("unknown modem: %s", routerType)
 	}
 
-	if commandLineOpts.PrometheusPort > 0 {
-		outputs.Prometheus(modem, commandLineOpts.PrometheusPort)
+	prometheusPort := commandLineOpts.PrometheusPort
+	if envPort := utils.Getenv("PROMETHEUS_PORT", ""); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			prometheusPort = p
+		}
+	}
+
+	if prometheusPort > 0 {
+		outputs.Prometheus(modem, prometheusPort)
 	} else {
 		for {
 			modemStats, err := utils.FetchStats(modem)

@@ -283,7 +283,6 @@ func ProExporter(docsisModem utils.DocsisModem) *PrometheusExporter {
 }
 
 func Prometheus(modem utils.DocsisModem, port int) {
-	prometheus.Unregister(prometheus.NewGoCollector())
 	exporter := ProExporter(modem)
 	prometheus.MustRegister(exporter)
 
