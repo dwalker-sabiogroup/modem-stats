@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/md5"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -14,9 +15,15 @@ import (
 	"github.com/Jeffail/gabs/v2"
 )
 
+var insecureHTTPClient = &http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	},
+}
+
 func SimpleHTTPFetch(url string) ([]byte, int64, error) {
 	timeStart := time.Now().UnixNano() / int64(time.Millisecond)
-	resp, err := http.Get(url)
+	resp, err := insecureHTTPClient.Get(url)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -92,8 +99,13 @@ func BoundedParallelGet(urls []string, concurrencyLimit int) []HttpResult {
 	for i, url := range urls {
 		go func(i int, url string) {
 			semaphoreChan <- struct{}{}
-			res, err := http.Get(url)
-			result := &HttpResult{i, *res, err}
+			res, err := insecureHTTPClient.Get(url)
+			var result *HttpResult
+			if res != nil {
+				result = &HttpResult{i, *res, err}
+			} else {
+				result = &HttpResult{Index: i, Err: err}
+			}
 			resultsChan <- result
 			<-semaphoreChan
 		}(i, url)

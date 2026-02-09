@@ -29,7 +29,7 @@ func (sh5 *Modem) apiAddress() string {
 	if sh5.IPAddress == "" {
 		sh5.IPAddress = "192.168.100.1" // TODO: Is this a reasonable default?
 	}
-	return fmt.Sprintf("http://%s/rest/v1/cablemodem", sh5.IPAddress)
+	return fmt.Sprintf("https://%s/rest/v1/cablemodem", sh5.IPAddress)
 }
 
 type dsChannel struct {
