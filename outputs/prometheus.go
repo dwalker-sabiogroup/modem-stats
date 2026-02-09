@@ -137,11 +137,13 @@ func (p *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for _, config := range modemStats.Configs {
+		serviceFlowId := strconv.Itoa(config.ServiceFlowId)
 		ch <- prometheus.MustNewConstMetric(
 			p.maxrate,
 			prometheus.GaugeValue,
 			float64(config.Maxrate),
 			config.Config,
+			serviceFlowId,
 		)
 		if config.Maxburst != 0 {
 			ch <- prometheus.MustNewConstMetric(
@@ -149,6 +151,7 @@ func (p *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 				prometheus.GaugeValue,
 				float64(config.Maxburst),
 				config.Config,
+				serviceFlowId,
 			)
 		}
 	}
@@ -261,13 +264,13 @@ func ProExporter(docsisModem utils.DocsisModem) *PrometheusExporter {
 		maxrate: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "config", "maxrate"),
 			"Maximum link rate",
-			[]string{"config"},
+			[]string{"config", "serviceflow_id"},
 			nil,
 		),
 		maxburst: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "config", "maxburst"),
 			"Maximum link burst rate",
-			[]string{"config"},
+			[]string{"config", "serviceflow_id"},
 			nil,
 		),
 		fetchtime: prometheus.NewDesc(

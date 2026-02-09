@@ -161,9 +161,10 @@ func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 
 	for _, modemConfig := range results.ServiceFlows {
 		modemConfigs = append(modemConfigs, utils.ModemConfig{
-			Config:   modemConfig.ServiceFlow.Direction,
-			Maxrate:  modemConfig.ServiceFlow.MaxRate,
-			Maxburst: modemConfig.ServiceFlow.MaxBurst,
+			Config:        modemConfig.ServiceFlow.Direction,
+			Maxrate:       modemConfig.ServiceFlow.MaxRate,
+			Maxburst:      modemConfig.ServiceFlow.MaxBurst,
+			ServiceFlowId: modemConfig.ServiceFlow.ID,
 		})
 	}
 

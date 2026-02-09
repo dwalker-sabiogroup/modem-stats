@@ -16,9 +16,10 @@ type ModemChannel struct {
 }
 
 type ModemConfig struct {
-	Config   string
-	Maxrate  int
-	Maxburst int
+	Config        string
+	Maxrate       int
+	Maxburst      int
+	ServiceFlowId int
 }
 
 type ModemStats struct {
