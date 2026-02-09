@@ -68,6 +68,16 @@ type serviceFlow struct {
 	} `json:"serviceFlow"`
 }
 
+type eventLogEntry struct {
+	Priority string `json:"priority"`
+	Time     string `json:"time"`
+	Message  string `json:"message"`
+}
+
+type eventLogResponse struct {
+	EventLog []eventLogEntry `json:"eventlog"`
+}
+
 type resultsStruct struct {
 	Downstream struct {
 		Channels []dsChannel `json:"channels"`
@@ -195,4 +205,36 @@ func (sh5 *Modem) ParseStats() (utils.ModemStats, error) {
 		DownChannels: downChannels,
 		FetchTime:    sh5.FetchTime,
 	}, nil
+}
+
+// FetchEventLog retrieves the event log from the modem
+func (sh5 *Modem) FetchEventLog() ([]utils.EventLogEntry, error) {
+	url := sh5.apiAddress() + "/eventlog"
+
+	res, err := utils.InsecureHTTPClient().Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch eventlog: %w", err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read eventlog response: %w", err)
+	}
+
+	var response eventLogResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse eventlog JSON: %w", err)
+	}
+
+	entries := make([]utils.EventLogEntry, len(response.EventLog))
+	for i, e := range response.EventLog {
+		entries[i] = utils.EventLogEntry{
+			Priority:  e.Priority,
+			Timestamp: e.Time,
+			Message:   e.Message,
+		}
+	}
+
+	return entries, nil
 }

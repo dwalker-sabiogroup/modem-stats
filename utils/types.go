@@ -40,10 +40,21 @@ type ModemStats struct {
 	ModemType    string
 }
 
+type EventLogEntry struct {
+	Priority  string
+	Timestamp string
+	Message   string
+}
+
 type DocsisModem interface {
 	ParseStats() (ModemStats, error)
 	ClearStats()
 	Type() string
+}
+
+// EventLogProvider is implemented by modems that support event log retrieval
+type EventLogProvider interface {
+	FetchEventLog() ([]EventLogEntry, error)
 }
 
 const (

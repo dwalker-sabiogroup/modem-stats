@@ -186,6 +186,18 @@ Ziggo Connectbox:**
  * `ROUTER_PASS` or `--password=password` (defaults to `password`)
 
 
+### Loki Log Export
+
+For modems that support event logs (currently SuperHub 5), logs can be pushed to a Loki endpoint:
+
+ * `LOKI_ENDPOINT` - The Loki push API URL (e.g., `http://loki:3100/loki/api/v1/push`)
+ * `LOKI_POLL_INTERVAL` - How often to poll for new logs in seconds (defaults to `60`)
+
+This is compatible with the [OpenTelemetry Collector Loki Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/lokireceiver).
+
+Logs are deduplicated so only new entries are pushed on each poll.
+
+
 ### Example Usage
 
 ```

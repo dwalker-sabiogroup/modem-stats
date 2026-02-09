@@ -29,6 +29,37 @@ var commandLineOpts struct {
 	Password       string `long:"password" description:"The modem's password (if applicable)"`
 }
 
+func startLokiExporter(modem utils.DocsisModem) {
+	lokiEndpoint := utils.Getenv("LOKI_ENDPOINT", "")
+	if lokiEndpoint == "" {
+		return
+	}
+
+	logProvider, ok := modem.(utils.EventLogProvider)
+	if !ok {
+		log.Printf("Loki endpoint configured but modem %T does not support event logs", modem)
+		return
+	}
+
+	labels := map[string]string{
+		"job":    "modem-stats",
+		"source": "cablemodem",
+	}
+
+	lokiExporter := outputs.NewLokiExporter(lokiEndpoint, logProvider, labels)
+
+	// Poll interval from env, default 60 seconds
+	pollInterval := 60 * time.Second
+	if intervalStr := utils.Getenv("LOKI_POLL_INTERVAL", ""); intervalStr != "" {
+		if secs, err := strconv.Atoi(intervalStr); err == nil && secs > 0 {
+			pollInterval = time.Duration(secs) * time.Second
+		}
+	}
+
+	log.Printf("Starting Loki exporter to %s (poll interval: %v)", lokiEndpoint, pollInterval)
+	lokiExporter.StartPolling(pollInterval)
+}
+
 func main() {
 	_, err := flags.ParseArgs(&commandLineOpts, os.Args)
 	if err != nil {
@@ -100,6 +131,9 @@ func main() {
 	default:
 		log.Fatalf("unknown modem: %s", routerType)
 	}
+
+	// Start Loki exporter if configured
+	startLokiExporter(modem)
 
 	prometheusPort := commandLineOpts.PrometheusPort
 	if envPort := utils.Getenv("PROMETHEUS_PORT", ""); envPort != "" {

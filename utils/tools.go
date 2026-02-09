@@ -22,6 +22,11 @@ var insecureHTTPClient = &http.Client{
 	},
 }
 
+// InsecureHTTPClient returns an HTTP client that skips TLS verification
+func InsecureHTTPClient() *http.Client {
+	return insecureHTTPClient
+}
+
 func SimpleHTTPFetch(url string) ([]byte, int64, error) {
 	timeStart := time.Now().UnixMilli()
 	resp, err := insecureHTTPClient.Get(url)

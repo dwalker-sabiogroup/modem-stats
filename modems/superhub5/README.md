@@ -8,11 +8,12 @@ This processor is only known to work with the Virgin Media Superhub 5.
 ## Fetching the Data
 
 The Superhub 5 exposes a REST API on its webserver at `/rest/v1`.
-There are 3 endpoints which interest us here:
+There are 4 endpoints which interest us here:
 
  * `/rest/v1/cablemodem/downstream`
  * `/rest/v1/cablemodem/upstream`
  * `/rest/v1/cablemodem/serviceflows`
+ * `/rest/v1/cablemodem/eventlog`
 
 The Superhub 5 runs at `192.168.0.1` in router mode and `192.168.100.1` in
 modem mode.
@@ -145,3 +146,26 @@ var MODULATION_MAP = {
     unknown     : "c_cd04" // 'Unknown'
 };
 ```
+
+
+### Event Log
+
+`.eventlog` contains an array of log entries from the modem.
+Each entry contains:
+
+ - `priority` - Log level (critical, warning, notice)
+ - `time` - ISO 8601 timestamp
+ - `message` - Log message text
+
+Example:
+
+```json
+{
+  "priority": "critical",
+  "time": "2026-02-09T10:14:14.000Z",
+  "message": "Started Unicast Maintenance Ranging - No Response received - T3 time-out;CM-MAC=b0:1f:f4:04:be:b1;CMTS-MAC=00:01:5c:7b:18:6a;CM-QOS=1.1;CM-VER=3.1;"
+}
+```
+
+The event log can be pushed to a Loki endpoint by setting the `LOKI_ENDPOINT` environment variable.
+See the main README for configuration details.
